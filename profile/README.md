@@ -7,6 +7,8 @@
 <p>
   <a href="#repositories">Repositories</a>
   ·
+  <a href="#research">Research</a>
+  ·
   <a href="#architecture">Architecture</a>
   ·
   <a href="#order-pipeline">Order Pipeline</a>
@@ -45,7 +47,19 @@
 | [owner_pos_app](https://github.com/MGRV-Project/owner_pos_app) | 매장 운영용 POS 클라이언트 |
 | [backend](https://github.com/MGRV-Project/backend) | 백엔드 |
 | [shared](https://github.com/MGRV-Project/shared) | 클라이언트 간 공유 설계 자산 |
+| [docs](https://github.com/MGRV-Project/docs) | API/RPC/이벤트 등 인터페이스 계약 스펙 |
 | [readme](https://github.com/MGRV-Project/readme) | 프로젝트 개요 원문 |
+
+---
+
+## Research
+
+시스템을 만들기 전에 "누구를 위한 시스템인가"와 "어디에 놓을 것인가"를 조사한 리서치 레포. 코드가 아니라 의사결정 근거를 담는다.
+
+| 레포 | 역할 |
+|---|---|
+| [cafe-manager-research-audit](https://github.com/MGRV-Project/cafe-manager-research-audit) | 카페 매니저 직무 리서치 + AX(자동화) 전환 시 자동화되는 업무/남는 업무 매핑 |
+| [raw_data](https://github.com/MGRV-Project/raw_data) | 1호점 입지 상권·생활인구·대중교통 데이터 |
 
 ---
 
@@ -64,6 +78,7 @@ flowchart LR
     subgraph MGRV["MGRV-Project"]
         RM[readme]
         SH[shared]
+        DOCS[docs]
         BE[backend]
         CA[customer_app]
         OP[owner_pos_app]
@@ -71,6 +86,8 @@ flowchart LR
 
     SH -.->|shared contracts| CA
     SH -.->|shared contracts| OP
+    DOCS -.->|API/RPC/event spec| CA
+    DOCS -.->|API/RPC/event spec| OP
     BE -->|API surface| CA
     BE -->|API surface| OP
     RM -.-> SH
@@ -78,16 +95,23 @@ flowchart LR
 
 ## Order Pipeline
 
+실제 백엔드가 강제하는 주문 상태 전이. 결제 완료(`paid`) 전까지는 시스템이 자동 처리하고, 그 이후(`accepted` 이후 준비·픽업과 취소 예외)는 매장이 직접 판단한다.
+
 ```mermaid
 stateDiagram-v2
-    [*] --> 접수대기
-    접수대기 --> 접수완료
-    접수완료 --> 준비중
-    준비중 --> 준비완료
-    준비완료 --> 전달완료
-    전달완료 --> [*]
-    접수완료 --> 취소
-    취소 --> [*]
+    [*] --> draft
+    draft --> payment_pending
+    payment_pending --> paid
+    payment_pending --> payment_failed
+    paid --> accepted: 점주 주문 확인
+    paid --> cancelled: 고객 취소(정책별 자동/승인)
+    accepted --> preparing
+    accepted --> cancelled: 승인 필요 매장은 예외 처리
+    preparing --> ready
+    ready --> completed
+    payment_failed --> [*]
+    cancelled --> [*]
+    completed --> [*]
 ```
 
 ---
